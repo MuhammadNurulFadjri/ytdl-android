@@ -14,7 +14,7 @@ android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,ACCE
 android.api = 33
 android.minapi = 24
 android.accept_sdk_license = True
-android.arch = arm64-v8a
+android.archs = armeabi-v7a, arm64-v8a
 android.allow_backup = True
 
 # jangan specify NDK version, biar buildozer pilih sendiri
