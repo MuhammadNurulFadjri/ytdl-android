@@ -6,8 +6,18 @@ support playlist select, thumbnail, folder picker, stop download
 
 import os
 import sys
+import subprocess
+
 if sys.platform == 'win32':
     os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
+
+# window size buat desktop testing (mirip hp)
+from kivy.utils import platform as kv_platform
+if kv_platform != 'android':
+    from kivy.config import Config
+    Config.set('graphics', 'width', '400')
+    Config.set('graphics', 'height', '750')
+    Config.set('graphics', 'resizable', '1')
 
 import re
 import json
@@ -239,7 +249,7 @@ KV = """
         Label:
             text: root.duration
             font_size: sp(10)
-            color: hex('6b7280')
+            color: hex('9ca3af')
             halign: 'left'
             text_size: self.size
             size_hint_y: None
@@ -266,7 +276,7 @@ KV = """
             Label:
                 text: root.note
                 font_size: sp(10)
-                color: hex('6b7280')
+                color: hex('9ca3af')
                 size_hint_x: None
                 width: dp(65)
                 halign: 'right'
@@ -295,7 +305,7 @@ KV = """
             id: cur_path
             text: ''
             font_size: sp(11)
-            color: hex('6b7280')
+            color: hex('9ca3af')
             halign: 'left'
             text_size: self.width, None
             size_hint_y: None
@@ -351,7 +361,7 @@ KV = """
         Label:
             text: 'v1.3'
             font_size: sp(10)
-            color: hex('6b7280')
+            color: hex('9ca3af')
             halign: 'right'
             text_size: self.size
             valign: 'center'
@@ -384,7 +394,7 @@ KV = """
             Label:
                 text: 'url'
                 font_size: sp(11)
-                color: hex('6b7280')
+                color: hex('9ca3af')
                 halign: 'left'
                 text_size: self.size
                 size_hint_y: None
@@ -399,7 +409,7 @@ KV = """
                     multiline: False
                     font_size: sp(13)
                     foreground_color: hex('c8ccd4')
-                    hint_text_color: hex('6b7280')
+                    hint_text_color: hex('8892a4')
                     cursor_color: hex('34d399')
                     background_color: 0,0,0,0
                     padding: dp(10), dp(10)
@@ -432,7 +442,7 @@ KV = """
                     Label:
                         text: 'format'
                         font_size: sp(11)
-                        color: hex('6b7280')
+                        color: hex('9ca3af')
                         halign: 'left'
                         text_size: self.size
                         size_hint_y: None
@@ -457,7 +467,7 @@ KV = """
                     Label:
                         text: 'quality'
                         font_size: sp(11)
-                        color: hex('6b7280')
+                        color: hex('9ca3af')
                         halign: 'left'
                         text_size: self.size
                         size_hint_y: None
@@ -476,7 +486,7 @@ KV = """
                 Label:
                     text: root.dl_display
                     font_size: sp(11)
-                    color: hex('6b7280')
+                    color: hex('9ca3af')
                     halign: 'left'
                     text_size: self.width, None
                     shorten: True
@@ -526,7 +536,7 @@ KV = """
                 Label:
                     text: root.sel_count_text
                     font_size: sp(10)
-                    color: hex('6b7280')
+                    color: hex('9ca3af')
                     halign: 'right'
                     text_size: self.size
                     valign: 'center'
@@ -536,7 +546,7 @@ KV = """
                 id: lbl_status
                 text: ''
                 font_size: sp(11)
-                color: hex('6b7280')
+                color: hex('9ca3af')
                 halign: 'left'
                 text_size: self.width, None
                 size_hint_y: None
@@ -561,6 +571,15 @@ def _get_thumb(vid_id):
     if vid_id:
         return f"https://img.youtube.com/vi/{vid_id}/mqdefault.jpg"
     return ""
+
+
+def _has_ffmpeg():
+    """cek ffmpeg ada nggak di system"""
+    try:
+        subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=5)
+        return True
+    except:
+        return False
 
 def _extract_id(url):
     for p in [r'(?:v=|/v/|youtu\.be/)([a-zA-Z0-9_-]{11})', r'(?:embed/)([a-zA-Z0-9_-]{11})']:
@@ -793,7 +812,10 @@ class Root(BoxLayout):
 
         self._stop_flag.clear()
         self.is_downloading = True
-        self._msg("[color=60a5fa]downloading...[/color]")
+        no_ffmpeg_warn = ""
+        if self.fmt == "mp3" and not _has_ffmpeg():
+            no_ffmpeg_warn = "  [color=fbbf24](no ffmpeg, audio jadi m4a)[/color]"
+        self._msg(f"[color=60a5fa]downloading...[/color]{no_ffmpeg_warn}")
         self._dl_thread = threading.Thread(target=self._dl_bg, daemon=True)
         self._dl_thread.start()
 
@@ -826,17 +848,26 @@ class Root(BoxLayout):
 
             try:
                 if self.fmt == "mp3":
-                    opts = {
-                        "format": "bestaudio/best",
-                        "outtmpl": os.path.join(self.dl_path, "%(title)s.%(ext)s"),
-                        "postprocessors": [{
-                            "key": "FFmpegExtractAudio",
-                            "preferredcodec": "mp3",
-                            "preferredquality": self.qual,
-                        }],
-                        "progress_hooks": [lambda d, r=row: self._hook(d, r)],
-                        "quiet": True, "no_warnings": True,
-                    }
+                    if _has_ffmpeg():
+                        opts = {
+                            "format": "bestaudio/best",
+                            "outtmpl": os.path.join(self.dl_path, "%(title)s.%(ext)s"),
+                            "postprocessors": [{
+                                "key": "FFmpegExtractAudio",
+                                "preferredcodec": "mp3",
+                                "preferredquality": self.qual,
+                            }],
+                            "progress_hooks": [lambda d, r=row: self._hook(d, r)],
+                            "quiet": True, "no_warnings": True,
+                        }
+                    else:
+                        # tanpa ffmpeg: download audio apa adanya (m4a/webm)
+                        opts = {
+                            "format": "bestaudio/best",
+                            "outtmpl": os.path.join(self.dl_path, "%(title)s.%(ext)s"),
+                            "progress_hooks": [lambda d, r=row: self._hook(d, r)],
+                            "quiet": True, "no_warnings": True,
+                        }
                 else:
                     opts = {
                         "format": f"bestvideo[height<={self.qual}]+bestaudio/best[height<={self.qual}]/best",
@@ -901,7 +932,7 @@ class Root(BoxLayout):
 
 
 class YTDLApp(App):
-    title = "yt downloader"
+    title = "Youtube Downloader"
 
     def build(self):
         Builder.load_string(KV)
