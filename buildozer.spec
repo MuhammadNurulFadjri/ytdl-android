@@ -6,8 +6,9 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,json
 version = 1.3.0
 
-# dependencies
-requirements = python3,kivy==2.3.0,yt-dlp,pyjnius,android,certifi,brotli,websockets,mutagen,pycryptodomex,pillow
+# requirements - keep minimal, avoid C-compilation heavy packages
+# yt-dlp works without brotli/pycryptodomex (just slower/fewer features)
+requirements = python3,kivy,yt-dlp,pyjnius,android,certifi,mutagen,websockets
 
 # android
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,ACCESS_NETWORK_STATE
@@ -21,13 +22,11 @@ android.allow_backup = True
 # appearance
 orientation = portrait
 fullscreen = 0
-
-# presplash
-# android.presplash_color = #1a1d23
+android.presplash_color = #1a1d23
 
 # build
 log_level = 2
-warn_on_root = 1
+warn_on_root = 0
 
 # p4a
 p4a.branch = develop
@@ -35,4 +34,4 @@ p4a.bootstrap = sdl2
 
 [buildozer]
 log_level = 2
-warn_on_root = 1
+warn_on_root = 0

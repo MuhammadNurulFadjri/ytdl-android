@@ -5,7 +5,9 @@ support playlist select, thumbnail, folder picker, stop download
 """
 
 import os
-os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
+import sys
+if sys.platform == 'win32':
+    os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
 import re
 import json
