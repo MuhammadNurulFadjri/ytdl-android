@@ -38,34 +38,19 @@ jobs:
             libncurses5-dev libncursesw5-dev \
             cmake libltdl-dev lld
 
-      - name: Install buildozer + cython
+      - name: Install buildozer
         run: |
           pip install --upgrade pip setuptools wheel
           pip install buildozer==1.5.0 cython==3.0.10
 
-      - name: Cache buildozer
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.buildozer
-            .buildozer
-          key: bz-v4-${{ hashFiles('buildozer.spec') }}
-          restore-keys: bz-v4-
-
       - name: Build debug APK
         run: |
-          # log everything to file AND stdout
           buildozer -v android debug 2>&1 | tee build.log
           EXIT_CODE=${PIPESTATUS[0]}
-          echo "Buildozer exit code: $EXIT_CODE"
-          
-          echo "=== Checking for APK ==="
+          echo "=== exit code: $EXIT_CODE ==="
           find . -name "*.apk" -type f 2>/dev/null
-          
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "=== BUILD FAILED - last 80 lines ==="
-            tail -80 build.log
-            echo "=== Searching for errors ==="
+            echo "=== ERRORS ==="
             grep -in "error\|failed\|exception\|traceback\|fatal" build.log | tail -40
             exit 1
           fi
