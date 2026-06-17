@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,40 +36,50 @@ jobs:
             libffi-dev libssl-dev \
             zlib1g-dev libbz2-dev \
             libncurses5-dev libncursesw5-dev \
-            cmake libltdl-dev \
-            lld
+            cmake libltdl-dev lld
 
       - name: Install buildozer
         run: |
           pip install --upgrade pip
           pip install buildozer cython==3.0.10
 
-      - name: Cache .buildozer
+      - name: Cache buildozer
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-v2-${{ hashFiles('buildozer.spec') }}
-          restore-keys: buildozer-v2-
+          key: buildozer-v3-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-v3-
 
       - name: Build APK
         run: |
-          set -o pipefail
-          buildozer android debug 2>&1 | tee build.log
-        env:
-          BUILDOZER_WARN_ON_ROOT: 0
+          buildozer android debug > build.log 2>&1 || true
+          echo "--- LAST 200 LINES ---"
+          tail -200 build.log
+          echo "--- CHECKING APK ---"
+          ls -la bin/*.apk 2>/dev/null || echo "NO APK FOUND"
 
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ytdownloader-apk
-          path: bin/*.apk
-          retention-days: 30
-
-      - name: Upload build log on failure
-        if: failure()
+      - name: Upload build log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-log
           path: build.log
           retention-days: 7
+
+      - name: Upload APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ytdownloader-apk
+          path: bin/*.apk
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Fail if no APK
+        run: |
+          if [ ! -f bin/*.apk ]; then
+            echo "BUILD FAILED - no APK produced"
+            echo "--- searching for errors ---"
+            grep -i -n "error\|failed\|exception\|traceback" build.log | tail -30
+            exit 1
+          fi
